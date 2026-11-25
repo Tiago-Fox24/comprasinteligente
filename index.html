@@ -1,0 +1,2306 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Pedidos &amp; Feira Inteligente</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- jsPDF e jsPDF-AutoTable para geração de PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+    /* Remove setas padrão de inputs numéricos para visual mais limpo */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      opacity: 0.6;
+    }
+    /* Animação suave para modais e notificações */
+    @keyframes fadeInScale {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .animate-modal {
+      animation: fadeInScale 0.18s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-32">
+
+  <!-- ===================================================================== -->
+  <!-- CABEÇALHO PRINCIPAL                                                   -->
+  <!-- ===================================================================== -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <!-- Logo e Título -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm shrink-0">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-lg sm:text-xl font-bold text-slate-900 leading-tight">Sistema de Pedidos &amp; Feira Inteligente</h1>
+            <p class="text-xs text-slate-500">Lista doméstica, scanner de ofertas com IA, PDF e histórico salvo</p>
+          </div>
+        </div>
+
+        <!-- Status de Sincronização / Banco de Dados -->
+        <div class="flex items-center gap-2 self-start sm:self-center">
+          <span id="dbStatusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            Conectando ao banco...
+          </span>
+        </div>
+      </div>
+
+      <!-- Abas de Navegação -->
+      <nav class="flex items-center gap-1.5 mt-3.5 overflow-x-auto pb-1" aria-label="Navegação principal">
+        <button data-tab="lista" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all bg-emerald-600 text-white shadow-sm">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+          Lista de Compras
+        </button>
+        <button data-tab="scanner" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+          Scanner IA de Promoções
+        </button>
+        <button data-tab="mercados" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          Onde Comprar
+          <span id="badgeMercadosCount" class="ml-0.5 px-1.5 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-800 font-bold">0</span>
+        </button>
+        <button data-tab="historico" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" /></svg>
+          Banco de Dados / Histórico
+          <span id="badgeHistoricoCount" class="ml-0.5 px-1.5 py-0.5 text-xs rounded-full bg-slate-200 text-slate-700 font-bold">0</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- CONTEÚDO PRINCIPAL                                                    -->
+  <!-- ===================================================================== -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5">
+
+    <!-- Banner Informativo de Último Carregamento -->
+    <div id="lastLoadBanner" class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+      <div class="flex items-start sm:items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <p id="lastLoadBannerText" class="text-sm font-medium text-emerald-950">
+            Carregando últimos dados salvos...
+          </p>
+          <p class="text-xs text-emerald-700 mt-0.5">
+            Os dados permanecem salvos mesmo após exportar o PDF e só são apagados ao confirmar o botão Limpar.
+          </p>
+        </div>
+      </div>
+      <span id="unsavedIndicator" class="hidden self-start sm:self-center inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
+        Alterações não salvas
+      </span>
+    </div>
+
+    <!-- Painel Superior de Resumo em Tempo Real -->
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Itens Selecionados</p>
+        <div class="flex items-baseline gap-2 mt-1.5">
+          <span id="statSelectedItems" class="text-2xl sm:text-3xl font-extrabold text-slate-900">0</span>
+          <span id="statTotalUnits" class="text-xs font-medium text-slate-500">(0 unid.)</span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-emerald-200 p-4 shadow-sm bg-gradient-to-br from-white to-emerald-50/50">
+        <p class="text-xs font-medium text-emerald-700 uppercase tracking-wider">Valor Total Estimado</p>
+        <p id="statTotalValue" class="text-2xl sm:text-3xl font-extrabold text-emerald-700 mt-1.5">R$ 0,00</p>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Com Mercado Indicado</p>
+        <div class="flex items-baseline gap-2 mt-1.5">
+          <span id="statWithMarket" class="text-2xl sm:text-3xl font-extrabold text-slate-900">0</span>
+          <span id="statPromoCount" class="text-xs font-semibold text-emerald-600">0 via IA</span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Último Salvamento</p>
+        <p id="statLastSaved" class="text-sm sm:text-base font-bold text-slate-800 mt-2 leading-snug">Ainda não salvo</p>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- ABA 1: LISTA DE COMPRAS                                             -->
+    <!-- =================================================================== -->
+    <section id="tab-lista" class="tab-panel space-y-5">
+      <!-- Barra de Busca e Filtros -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+          <!-- Campo de busca -->
+          <div class="md:col-span-5 relative">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              id="searchInput"
+              type="text"
+              placeholder="Buscar produto ou mercado..."
+              class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            />
+          </div>
+
+          <!-- Filtro por categoria -->
+          <div class="md:col-span-4">
+            <select
+              id="categoryFilter"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            >
+              <option value="TODAS">Todas as categorias</option>
+            </select>
+          </div>
+
+          <!-- Filtro rápido quantidade > 0 -->
+          <div class="md:col-span-3 flex items-center">
+            <label class="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 cursor-pointer text-sm font-medium text-slate-700 select-none transition">
+              <input id="onlyWithQtyFilter" type="checkbox" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500" />
+              <span>Só com qtd &gt; 0</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Container das Categorias da Lista Base -->
+      <div id="baseListContainer" class="space-y-4"></div>
+
+      <!-- Seção Dedicada: Produtos Extras (Fora da Lista) -->
+      <div class="bg-white rounded-2xl border-2 border-dashed border-emerald-300 shadow-sm overflow-hidden">
+        <div class="bg-emerald-50/80 px-4 sm:px-5 py-3.5 border-b border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 class="text-base font-bold text-emerald-950 flex items-center gap-2">
+              <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Produtos Extras (Fora da Lista)
+            </h2>
+            <p class="text-xs text-emerald-700 mt-0.5">Células em aberto para digitar livremente produtos que não estão na lista padrão.</p>
+          </div>
+          <button
+            id="addExtraRowBtn"
+            type="button"
+            class="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold shadow-sm transition active:scale-[0.98]"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Adicionar linha em aberto
+          </button>
+        </div>
+
+        <!-- Cabeçalho da Tabela de Extras (Desktop) -->
+        <div class="hidden md:grid md:grid-cols-12 gap-3 px-5 py-2.5 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div class="col-span-3">Nome do Produto</div>
+          <div class="col-span-2">Categoria</div>
+          <div class="col-span-1 text-center">Qtd</div>
+          <div class="col-span-2 text-right">Valor Unit. (R$)</div>
+          <div class="col-span-1 text-right">Subtotal</div>
+          <div class="col-span-3">Onde Comprar / Mercado</div>
+        </div>
+
+        <div id="extraListContainer" class="divide-y divide-slate-100"></div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- ABA 2: SCANNER IA DE PROMOÇÕES (GEMINI API)                         -->
+    <!-- =================================================================== -->
+    <section id="tab-scanner" class="tab-panel hidden space-y-5">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-5">
+        <div class="flex items-start gap-3">
+          <div class="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Scanner IA de Cards Promocionais</h2>
+            <p class="text-sm text-slate-600 mt-0.5">
+              Envie fotos/prints de encartes e cards promocionais de supermercados ou cole o texto das ofertas. A IA identifica os preços, cruza com a sua lista, escolhe o menor valor entre mercados e preenche automaticamente onde comprar cada item.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <!-- Upload de Imagens -->
+          <div class="space-y-3">
+            <label class="block text-sm font-semibold text-slate-700">1. Imagens dos Cards / Encartes (múltiplas permitidas)</label>
+            <label
+              for="promoImagesInput"
+              class="flex flex-col items-center justify-center w-full min-h-[150px] p-5 border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl bg-slate-50 hover:bg-emerald-50/40 cursor-pointer transition text-center"
+            >
+              <svg class="w-9 h-9 text-emerald-600 mb-2" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span class="text-sm font-semibold text-slate-700">Clique para selecionar imagens dos cards</span>
+              <span class="text-xs text-slate-500 mt-1">PNG, JPG ou WEBP — você pode enviar vários mercados de uma vez</span>
+              <input id="promoImagesInput" type="file" accept="image/*" multiple class="hidden" />
+            </label>
+
+            <!-- Preview das imagens selecionadas -->
+            <div id="promoImagePreviews" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+          </div>
+
+          <!-- Texto de ofertas + Nome do Mercado -->
+          <div class="space-y-3">
+            <div>
+              <label for="promoMarketHint" class="block text-sm font-semibold text-slate-700 mb-1.5">
+                2. Nome do Supermercado (opcional)
+              </label>
+              <input
+                id="promoMarketHint"
+                type="text"
+                placeholder="Ex: Assaí, Atacadão, Mix Mateus (ou deixe vazio para a IA identificar)"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <div>
+              <label for="promoTextInput" class="block text-sm font-semibold text-slate-700 mb-1.5">
+                3. Ou cole texto de ofertas (WhatsApp, listas promocionais)
+              </label>
+              <textarea
+                id="promoTextInput"
+                rows="5"
+                placeholder="Ex: Supermercado Bom Preço - Arroz parboilizado R$ 5,49 | Feijão R$ 6,99 | Detergente R$ 2,19 | Coca cola zero R$ 7,99..."
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Opção de atualização e Botão Analisar -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+          <label class="inline-flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+            <input id="onlyReplaceIfCheaper" type="checkbox" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500" />
+            <span>Substituir preço já preenchido apenas se a nova oferta for mais barata</span>
+          </label>
+
+          <div class="flex items-center gap-2">
+            <button
+              id="clearScannerBtn"
+              type="button"
+              class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-sm font-semibold transition"
+            >
+              Limpar Scanner
+            </button>
+            <button
+              id="analyzePromoBtn"
+              type="button"
+              class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-sm transition active:scale-[0.98]"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+              Analisar Cards com IA
+            </button>
+          </div>
+        </div>
+
+        <!-- Indicador de Carregamento da IA -->
+        <div id="aiLoadingBox" class="hidden rounded-2xl bg-emerald-50 border border-emerald-200 p-4 flex items-center gap-3">
+          <div class="w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin shrink-0"></div>
+          <div>
+            <p class="text-sm font-bold text-emerald-900">Analisando cards promocionais com a IA...</p>
+            <p class="text-xs text-emerald-700">Extraindo produtos, comparando menores preços e cruzando com sua lista de feira.</p>
+          </div>
+        </div>
+
+        <!-- Resultado da Última Análise IA -->
+        <div id="aiResultBox" class="hidden space-y-3"></div>
+      </div>
+
+      <!-- Resumo Rápido Onde Comprar (também visível aqui) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-base font-bold text-slate-900">Resumo: Onde Comprar Cada Item</h3>
+          <button type="button" onclick="switchTab('mercados')" class="text-xs font-semibold text-emerald-700 hover:underline">
+            Ver tela completa &rarr;
+          </button>
+        </div>
+        <div id="scannerMarketsPreview" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- ABA 3: ONDE COMPRAR (AGRUPADO POR SUPERMERCADO)                     -->
+    <!-- =================================================================== -->
+    <section id="tab-mercados" class="tab-panel hidden space-y-4">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Guia: Onde Comprar Cada Item</h2>
+          <p class="text-sm text-slate-600">Itens agrupados automaticamente por supermercado (preenchidos manualmente ou via Scanner IA).</p>
+        </div>
+        <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 cursor-pointer select-none">
+          <input id="marketsOnlySelectedFilter" type="checkbox" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500" />
+          <span>Mostrar só itens com qtd &gt; 0</span>
+        </label>
+      </div>
+
+      <div id="marketsBreakdownContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- ABA 4: BANCO DE DADOS / HISTÓRICO DE EXPORTAÇÕES                    -->
+    <!-- =================================================================== -->
+    <section id="tab-historico" class="tab-panel hidden space-y-4">
+      <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Banco de Dados de Feiras &amp; Exportações</h2>
+          <p class="text-sm text-slate-600">
+            Toda vez que você clica em <strong>Exportar PDF</strong>, um registro permanente é salvo aqui automaticamente. Limpar a lista atual nunca apaga este histórico.
+          </p>
+        </div>
+        <button
+          id="downloadJsonBackupBtn"
+          type="button"
+          class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold shadow-sm transition shrink-0"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Baixar Backup JSON
+        </button>
+      </div>
+
+      <div id="historyListContainer" class="space-y-3"></div>
+    </section>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- BARRA INFERIOR FIXA COM AÇÕES PRINCIPAIS (SALVAR / EXPORTAR / LIMPAR) -->
+  <!-- ===================================================================== -->
+  <footer class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t border-slate-200 shadow-lg z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+      <!-- Opção de PDF + Total Rápido -->
+      <div class="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-4">
+        <div class="text-left">
+          <span class="block text-[11px] font-semibold uppercase text-slate-500">Total Atual</span>
+          <span id="footerTotalValue" class="text-base sm:text-lg font-extrabold text-emerald-700">R$ 0,00</span>
+        </div>
+        <label class="inline-flex items-center gap-2 text-xs sm:text-sm text-slate-600 cursor-pointer select-none bg-slate-100 px-3 py-1.5 rounded-xl">
+          <input id="pdfOnlySelectedCheckbox" type="checkbox" checked class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500" />
+          <span>PDF só qtd &gt; 0</span>
+        </label>
+      </div>
+
+      <!-- Botões Salvar, Exportar e Limpar -->
+      <div class="grid grid-cols-3 sm:flex items-center gap-2 w-full sm:w-auto">
+        <button
+          id="saveBtn"
+          type="button"
+          class="inline-flex items-center justify-center gap-1.5 px-3 sm:px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs sm:text-sm font-bold shadow-sm transition active:scale-[0.98]"
+        >
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+          </svg>
+          <span>Salvar</span>
+        </button>
+
+        <button
+          id="exportBtn"
+          type="button"
+          class="inline-flex items-center justify-center gap-1.5 px-3 sm:px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold shadow-sm transition active:scale-[0.98]"
+        >
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span>Exportar PDF</span>
+        </button>
+
+        <button
+          id="clearBtn"
+          type="button"
+          class="inline-flex items-center justify-center gap-1.5 px-3 sm:px-5 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs sm:text-sm font-bold transition active:scale-[0.98]"
+        >
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          <span>Limpar</span>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL DE DUPLA VERIFICAÇÃO PARA LIMPAR DADOS                          -->
+  <!-- ===================================================================== -->
+  <div id="clearModalOverlay" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <!-- Etapa 1 -->
+    <div id="clearModalStep1" class="hidden bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-modal space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-amber-600">Verificação 1 de 2</span>
+          <h3 class="text-lg font-bold text-slate-900">Você já realizou a feira?</h3>
+        </div>
+      </div>
+      <p class="text-sm text-slate-600 leading-relaxed">
+        Antes de limpar a lista atual, confirme se você já concluiu suas compras. Se ainda estiver fazendo a feira ou quiser guardar um comprovante, recomendamos clicar em <strong>Exportar PDF</strong> primeiro.
+      </p>
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+        <button
+          id="clearStep1CancelBtn"
+          type="button"
+          class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-sm font-semibold transition"
+        >
+          Não, cancelar
+        </button>
+        <button
+          id="clearStep1ConfirmBtn"
+          type="button"
+          class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-sm transition"
+        >
+          Sim, já realizei a feira
+        </button>
+      </div>
+    </div>
+
+    <!-- Etapa 2 -->
+    <div id="clearModalStep2" class="hidden bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border-2 border-rose-200 animate-modal space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-rose-600">Verificação 2 de 2 — Confirmação Final</span>
+          <h3 class="text-lg font-bold text-slate-900">Apagar todos os dados atuais?</h3>
+        </div>
+      </div>
+      <p class="text-sm text-slate-700 leading-relaxed">
+        <strong>Tem certeza absoluta que deseja apagar todos os dados, valores e quantidades atuais da lista?</strong>
+      </p>
+      <p class="text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200">
+        Nota: O seu <strong>Banco de Dados / Histórico de Exportações</strong> continuará intacto e protegido. Apenas os campos da lista atual serão zerados.
+      </p>
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+        <button
+          id="clearStep2BackBtn"
+          type="button"
+          class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-sm font-semibold transition"
+        >
+          Voltar
+        </button>
+        <button
+          id="clearStep2ConfirmBtn"
+          type="button"
+          class="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-bold shadow-sm transition"
+        >
+          Sim, apagar tudo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- CONTAINER DE NOTIFICAÇÕES (TOASTS)                                    -->
+  <!-- ===================================================================== -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+  <!-- ===================================================================== -->
+  <!-- LÓGICA DA APLICAÇÃO (FIREBASE + GEMINI IA + PDF + INTERFACE)          -->
+  <!-- ===================================================================== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      addDoc,
+      collection,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // =========================================================================
+    // 1. LISTA BASE DE PRODUTOS PRÉ-CARREGADA POR CATEGORIA
+    // =========================================================================
+    const BASE_CATALOG = [
+      {
+        category: "Material de limpeza",
+        items: [
+          "Bombril",
+          "Bucha de prato",
+          "Polidor de alumínio",
+          "Óleo de peroba",
+          "Veja geral tampa vermelha",
+          "CIF limpeza",
+          "Desinfetante",
+          "Repelente spray adulto",
+          "SBP grande",
+          "Repelente tomada",
+          "Detergente",
+          "Pegador de roupas",
+          "Sabão líquido para roupas 5L",
+          "Amaciante para roupas 5L",
+          "Bom Ar Lavanda",
+          "Água sanitária",
+          "Sabão pedra",
+          "Naftalina",
+          "Saco de Lixo 30L"
+        ]
+      },
+      {
+        category: "Higiene e Cuidados Pessoais",
+        items: [
+          "Papel higiênico",
+          "Fraldas EG26",
+          "Lenços humedecidos",
+          "Sabonete barra",
+          "Sabonete líquido",
+          "Cotonete",
+          "Barbeadores para mamãe",
+          "Creme dental",
+          "Desodorante (tiago) CREME",
+          "Desodorante (david) SPRAY",
+          "Shampoo/Condicionador SEDA",
+          "Shampoo infantil (mãe)",
+          "Condicionador infantil (mãe)"
+        ]
+      },
+      {
+        category: "Bebidas",
+        items: ["Coca cola zero"]
+      },
+      {
+        category: "Doces",
+        items: ["Chocolate BIZ"]
+      },
+      {
+        category: "Cereais",
+        items: [
+          "Fubá Flocão",
+          "Massa tapioca Lopes",
+          "Farinha de trigo",
+          "Milho de pipoca",
+          "Macarrão Fino Sem glúten",
+          "Macarrão parafuso galo",
+          "Feijão",
+          "Arroz parboilizado",
+          "Sal refinado",
+          "Sal grosso",
+          "Açucar"
+        ]
+      },
+      {
+        category: "Tempero",
+        items: [
+          "Creme de Leite",
+          "Leite Condensado",
+          "Extrato de tomate",
+          "Azeitona Sem Caroço",
+          "Milho verde",
+          "Vinagre de Maca c/ álcool",
+          "Vinagre de maça s/ alcool",
+          "Óleo de Cozinha",
+          "Sardinha tomate",
+          "Knor galinha",
+          "Sazon Carne Grande",
+          "Coloral Marata 500g"
+        ]
+      },
+      {
+        category: "Laticínios e Ovos",
+        items: [
+          "Margarina Primor 1kg",
+          "Requeijão Cremoso Light",
+          "Maionese",
+          "Catchup",
+          "Ovos Grande"
+        ]
+      },
+      {
+        category: "Diversos",
+        items: [
+          "Luvas",
+          "Máscaras",
+          "Copos descartáveis",
+          "Palito de dente",
+          "Canudo",
+          "Chocolate em pó Maratá",
+          "Bolacha maria sem lactose",
+          "Bolacha maizena sem lactose",
+          "Bolacha Cream Cracker sem lactose",
+          "Nescafé Dolca",
+          "Nescafé descafeinado",
+          "Adoçante zero cal grande",
+          "Nutrem Sem sabor Grande",
+          "Papel toalha",
+          "Papel Filme",
+          "Papel Alumínio",
+          "Guardanapo",
+          "Leite em pó 800g"
+        ]
+      },
+      {
+        category: "Frios",
+        items: [
+          "Carque bovino",
+          "Calabresa Sadia",
+          "File de merluza"
+        ]
+      },
+      {
+        category: "Mercados diversos",
+        items: [
+          "Álcool 70%",
+          "Cola rato",
+          "Ameixa em Calda"
+        ]
+      }
+    ];
+
+    const CATEGORY_NAMES = BASE_CATALOG.map(c => c.category);
+
+    // =========================================================================
+    // 2. ESTADO GLOBAL DA APLICAÇÃO
+    // =========================================================================
+    const state = {
+      baseItems: [],        // Array de objetos dos 86 itens pré-carregados
+      extraItems: [],       // Array de linhas abertas (mínimo 5 sempre visíveis)
+      lastSavedAt: null,    // ISO string da última gravação
+      hasUnsavedChanges: false,
+      exportHistory: [],    // Histórico de exportações do banco de dados
+      uploadedImages: [],   // Imagens carregadas no scanner IA { id, name, dataUrl, base64, mimeType }
+      activeTab: "lista",
+      filters: {
+        search: "",
+        category: "TODAS",
+        onlyWithQty: false,
+        marketsOnlySelected: false
+      }
+    };
+
+    // Referências do Firebase
+    let db = null;
+    let auth = null;
+    let currentUser = null;
+    let firebaseAvailable = false;
+    const appId = typeof __app_id !== "undefined" ? __app_id : "feira-inteligente-app";
+
+    // Cria os itens base zerados
+    function createInitialBaseItems() {
+      const list = [];
+      let idx = 1;
+      for (const group of BASE_CATALOG) {
+        for (const name of group.items) {
+          list.push({
+            id: `base_${idx++}`,
+            category: group.category,
+            name,
+            qty: "",
+            unitPrice: "",
+            market: "",
+            isPromoAI: false
+          });
+        }
+      }
+      return list;
+    }
+
+    // Cria 5 linhas em aberto iniciais para produtos extras
+    function createInitialExtraItems(count = 5) {
+      const rows = [];
+      for (let i = 0; i < count; i++) {
+        rows.push(createEmptyExtraRow());
+      }
+      return rows;
+    }
+
+    function createEmptyExtraRow() {
+      return {
+        id: `extra_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        name: "",
+        category: "Outros / Extra",
+        qty: "",
+        unitPrice: "",
+        market: "",
+        isPromoAI: false
+      };
+    }
+
+    // =========================================================================
+    // 3. FUNÇÕES UTILITÁRIAS (FORMATAÇÃO, CÁLCULOS, TOASTS)
+    // =========================================================================
+    function parseNum(val) {
+      if (val === "" || val === null || val === undefined) return 0;
+      const normalized = String(val).replace(",", ".");
+      const n = parseFloat(normalized);
+      return Number.isFinite(n) && n >= 0 ? n : 0;
+    }
+
+    function formatBRL(value) {
+      return (Number(value) || 0).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+      });
+    }
+
+    function formatDateTime(isoString) {
+      if (!isoString) return "Ainda não salvo";
+      try {
+        const d = new Date(isoString);
+        return d.toLocaleString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      } catch {
+        return isoString;
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function normalizeText(str) {
+      return String(str ?? "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+    }
+
+    function showToast(message, type = "success") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      const styles = {
+        success: "bg-emerald-700 text-white border-emerald-800",
+        error: "bg-rose-600 text-white border-rose-700",
+        info: "bg-slate-800 text-white border-slate-900",
+        warning: "bg-amber-500 text-white border-amber-600"
+      };
+      toast.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-lg border text-sm font-medium flex items-center justify-between gap-3 animate-modal ${styles[type] || styles.info}`;
+      toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transition = "opacity 0.25s ease";
+        setTimeout(() => toast.remove(), 260);
+      }, 3600);
+    }
+
+    // Calcula todos os totais atuais (base + extras preenchidos)
+    function computeSummary(baseItems = state.baseItems, extraItems = state.extraItems) {
+      let selectedCount = 0;
+      let totalUnits = 0;
+      let totalValue = 0;
+      let withMarketCount = 0;
+      let promoAICount = 0;
+
+      const allItems = [
+        ...baseItems,
+        ...extraItems.filter(e => e.name.trim() !== "" || parseNum(e.qty) > 0 || parseNum(e.unitPrice) > 0)
+      ];
+
+      for (const item of allItems) {
+        const q = parseNum(item.qty);
+        const p = parseNum(item.unitPrice);
+        if (q > 0) {
+          selectedCount++;
+          totalUnits += q;
+          totalValue += q * p;
+        }
+        if (item.market && item.market.trim() !== "") {
+          withMarketCount++;
+          if (item.isPromoAI) promoAICount++;
+        }
+      }
+
+      return { selectedCount, totalUnits, totalValue, withMarketCount, promoAICount };
+    }
+
+    function updateSummaryUI() {
+      const s = computeSummary();
+      document.getElementById("statSelectedItems").textContent = s.selectedCount;
+      document.getElementById("statTotalUnits").textContent = `(${Number(s.totalUnits.toFixed(2))} unid.)`;
+      document.getElementById("statTotalValue").textContent = formatBRL(s.totalValue);
+      document.getElementById("footerTotalValue").textContent = formatBRL(s.totalValue);
+      document.getElementById("statWithMarket").textContent = s.withMarketCount;
+      document.getElementById("statPromoCount").textContent = `${s.promoAICount} via IA`;
+      document.getElementById("statLastSaved").textContent = formatDateTime(state.lastSavedAt);
+      document.getElementById("badgeMercadosCount").textContent = s.withMarketCount;
+      document.getElementById("badgeHistoricoCount").textContent = state.exportHistory.length;
+
+      const unsavedEl = document.getElementById("unsavedIndicator");
+      if (state.hasUnsavedChanges) {
+        unsavedEl.classList.remove("hidden");
+      } else {
+        unsavedEl.classList.add("hidden");
+      }
+    }
+
+    function updateLastLoadBanner(isInitialLoad = false) {
+      const bannerText = document.getElementById("lastLoadBannerText");
+      const s = computeSummary();
+      if (state.lastSavedAt) {
+        const prefix = isInitialLoad ? "Últimos dados carregados:" : "Último salvamento registrado:";
+        bannerText.innerHTML = `<strong>${prefix}</strong> salvo em <strong>${escapeHtml(formatDateTime(state.lastSavedAt))}</strong> — <strong>${s.selectedCount}</strong> ${s.selectedCount === 1 ? "item" : "itens"} com quantidade preenchida (Total: <strong>${formatBRL(s.totalValue)}</strong>).`;
+      } else {
+        bannerText.innerHTML = `<strong>Bem-vindo!</strong> Sua lista com ${state.baseItems.length} produtos padrão e 5 células extras em aberto está pronta. Preencha as quantidades/valores e clique em <strong>Salvar</strong>.`;
+      }
+    }
+
+    function setDbStatusBadge(mode, label) {
+      const el = document.getElementById("dbStatusBadge");
+      if (mode === "connected") {
+        el.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200";
+        el.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${escapeHtml(label)}`;
+      } else if (mode === "offline") {
+        el.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-300";
+        el.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-500"></span> ${escapeHtml(label)}`;
+      } else {
+        el.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200";
+        el.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> ${escapeHtml(label)}`;
+      }
+    }
+
+    // =========================================================================
+    // 4. PERSISTÊNCIA EM BANCO DE DADOS (FIRESTORE)
+    // =========================================================================
+    async function initFirebaseAndLoad() {
+      try {
+        if (typeof __firebase_config === "undefined" || !__firebase_config) {
+          firebaseAvailable = false;
+          setDbStatusBadge("offline", "Modo Sessão (sem nuvem configurada)");
+          updateLastLoadBanner(true);
+          return;
+        }
+
+        const firebaseConfig = typeof __firebase_config === "string"
+          ? JSON.parse(__firebase_config)
+          : __firebase_config;
+
+        const app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+
+        // Regra obrigatória: autenticar ANTES de qualquer operação no Firestore
+        if (typeof __initial_auth_token !== "undefined" && __initial_auth_token) {
+          const cred = await signInWithCustomToken(auth, __initial_auth_token);
+          currentUser = cred.user;
+        } else {
+          const cred = await signInAnonymously(auth);
+          currentUser = cred.user;
+        }
+
+        firebaseAvailable = true;
+        setDbStatusBadge("connected", "Banco de Dados Conectado");
+
+        // Carrega último estado salvo
+        await loadSavedStateFromFirestore();
+
+        // Escuta histórico de exportações em tempo real
+        subscribeExportHistory();
+      } catch (err) {
+        console.error("Erro ao inicializar banco de dados:", err);
+        firebaseAvailable = false;
+        setDbStatusBadge("offline", "Modo Sessão Local");
+        updateLastLoadBanner(true);
+      }
+    }
+
+    async function loadSavedStateFromFirestore() {
+      if (!firebaseAvailable || !currentUser || !db) return;
+      try {
+        const stateRef = doc(db, "artifacts", appId, "users", currentUser.uid, "feira_state", "current");
+        const snap = await getDoc(stateRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          applyLoadedState(data);
+          updateLastLoadBanner(true);
+          showToast("Últimos dados salvos restaurados automaticamente!", "info");
+        } else {
+          updateLastLoadBanner(true);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar estado salvo:", err);
+        updateLastLoadBanner(true);
+      }
+    }
+
+    function applyLoadedState(saved) {
+      if (!saved) return;
+      const savedBaseMap = new Map();
+      if (Array.isArray(saved.baseItems)) {
+        for (const item of saved.baseItems) {
+          savedBaseMap.set(item.name, item);
+        }
+      }
+
+      // Mescla mantendo todos os 86 itens base sempre presentes
+      state.baseItems = createInitialBaseItems().map(item => {
+        const match = savedBaseMap.get(item.name);
+        if (!match) return item;
+        return {
+          ...item,
+          qty: match.qty ?? "",
+          unitPrice: match.unitPrice ?? "",
+          market: match.market ?? "",
+          isPromoAI: Boolean(match.isPromoAI)
+        };
+      });
+
+      // Restaura linhas extras garantindo mínimo de 5 linhas visíveis
+      if (Array.isArray(saved.extraItems) && saved.extraItems.length > 0) {
+        state.extraItems = saved.extraItems.map(e => ({
+          id: e.id || createEmptyExtraRow().id,
+          name: e.name ?? "",
+          category: e.category || "Outros / Extra",
+          qty: e.qty ?? "",
+          unitPrice: e.unitPrice ?? "",
+          market: e.market ?? "",
+          isPromoAI: Boolean(e.isPromoAI)
+        }));
+        while (state.extraItems.length < 5) {
+          state.extraItems.push(createEmptyExtraRow());
+        }
+      } else {
+        state.extraItems = createInitialExtraItems(5);
+      }
+
+      state.lastSavedAt = saved.lastSavedAt || null;
+      state.hasUnsavedChanges = false;
+
+      renderBaseList();
+      renderExtraList();
+      renderMarketsViews();
+      updateSummaryUI();
+    }
+
+    async function saveCurrentState(silent = false) {
+      const nowIso = new Date().toISOString();
+      state.lastSavedAt = nowIso;
+      state.hasUnsavedChanges = false;
+
+      const payload = {
+        baseItems: state.baseItems.map(i => ({
+          id: i.id,
+          category: i.category,
+          name: i.name,
+          qty: i.qty,
+          unitPrice: i.unitPrice,
+          market: i.market,
+          isPromoAI: Boolean(i.isPromoAI)
+        })),
+        extraItems: state.extraItems.map(e => ({
+          id: e.id,
+          name: e.name,
+          category: e.category,
+          qty: e.qty,
+          unitPrice: e.unitPrice,
+          market: e.market,
+          isPromoAI: Boolean(e.isPromoAI)
+        })),
+        lastSavedAt: nowIso
+      };
+
+      if (firebaseAvailable && currentUser && db) {
+        try {
+          const stateRef = doc(db, "artifacts", appId, "users", currentUser.uid, "feira_state", "current");
+          await setDoc(stateRef, payload);
+        } catch (err) {
+          console.error("Erro ao salvar no banco de dados:", err);
+          if (!silent) showToast("Erro ao salvar no banco de dados.", "error");
+          return false;
+        }
+      }
+
+      updateSummaryUI();
+      updateLastLoadBanner(false);
+      if (!silent) showToast("Dados salvos com sucesso!", "success");
+      return true;
+    }
+
+    function subscribeExportHistory() {
+      if (!firebaseAvailable || !currentUser || !db) return;
+      const colRef = collection(db, "artifacts", appId, "users", currentUser.uid, "feira_exports");
+      // Sem orderBy/limit no Firestore (ordenação em memória conforme boas práticas)
+      onSnapshot(
+        colRef,
+        (snapshot) => {
+          const list = [];
+          snapshot.forEach(docSnap => {
+            list.push({ id: docSnap.id, ...docSnap.data() });
+          });
+          list.sort((a, b) => new Date(b.exportedAt || 0) - new Date(a.exportedAt || 0));
+          state.exportHistory = list;
+          renderHistoryView();
+          updateSummaryUI();
+        },
+        (error) => {
+          console.error("Erro ao ler histórico de exportações:", error);
+        }
+      );
+    }
+
+    async function saveExportRecord(exportRecord) {
+      if (firebaseAvailable && currentUser && db) {
+        try {
+          const colRef = collection(db, "artifacts", appId, "users", currentUser.uid, "feira_exports");
+          await addDoc(colRef, exportRecord);
+        } catch (err) {
+          console.error("Erro ao registrar exportação no banco:", err);
+          showToast("PDF gerado, mas houve erro ao salvar no histórico.", "warning");
+        }
+      } else {
+        // Fallback em memória caso não haja Firebase
+        state.exportHistory.unshift({ id: `local_${Date.now()}`, ...exportRecord });
+        renderHistoryView();
+        updateSummaryUI();
+      }
+    }
+
+    // =========================================================================
+    // 5. RENDERIZAÇÃO DA LISTA DE COMPRAS E CÉLULAS EM ABERTO
+    // =========================================================================
+    function populateCategoryFilter() {
+      const select = document.getElementById("categoryFilter");
+      select.innerHTML = `<option value="TODAS">Todas as categorias (${CATEGORY_NAMES.length})</option>`;
+      for (const cat of CATEGORY_NAMES) {
+        const opt = document.createElement("option");
+        opt.value = cat;
+        opt.textContent = cat;
+        select.appendChild(opt);
+      }
+    }
+
+    function renderBaseList() {
+      const container = document.getElementById("baseListContainer");
+      const searchNorm = normalizeText(state.filters.search);
+      const catFilter = state.filters.category;
+      const onlyQty = state.filters.onlyWithQty;
+
+      // Agrupa por categoria
+      const groups = new Map();
+      for (const cat of CATEGORY_NAMES) {
+        if (catFilter !== "TODAS" && catFilter !== cat) continue;
+        groups.set(cat, []);
+      }
+
+      for (const item of state.baseItems) {
+        if (catFilter !== "TODAS" && item.category !== catFilter) continue;
+        if (onlyQty && parseNum(item.qty) <= 0) continue;
+        if (searchNorm) {
+          const matchName = normalizeText(item.name).includes(searchNorm);
+          const matchMarket = normalizeText(item.market).includes(searchNorm);
+          const matchCat = normalizeText(item.category).includes(searchNorm);
+          if (!matchName && !matchMarket && !matchCat) continue;
+        }
+        if (groups.has(item.category)) {
+          groups.get(item.category).push(item);
+        }
+      }
+
+      let html = "";
+      let totalRendered = 0;
+
+      for (const [category, items] of groups.entries()) {
+        if (items.length === 0) continue;
+        totalRendered += items.length;
+
+        const catSubtotal = items.reduce((acc, i) => acc + parseNum(i.qty) * parseNum(i.unitPrice), 0);
+        const catSelected = items.filter(i => parseNum(i.qty) > 0).length;
+
+        html += `
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <!-- Cabeçalho da Categoria -->
+            <div class="bg-slate-50 px-4 sm:px-5 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <h2 class="text-sm sm:text-base font-bold text-slate-900">${escapeHtml(category)}</h2>
+                <span class="text-xs font-medium text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full">
+                  ${catSelected}/${items.length} selecionados
+                </span>
+              </div>
+              <span class="text-xs sm:text-sm font-bold text-emerald-700" data-cat-subtotal="${escapeHtml(category)}">
+                Subtotal: ${formatBRL(catSubtotal)}
+              </span>
+            </div>
+
+            <!-- Cabeçalho das Colunas (Desktop) -->
+            <div class="hidden md:grid md:grid-cols-12 gap-3 px-5 py-2 bg-white border-b border-slate-100 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              <div class="col-span-4">Produto</div>
+              <div class="col-span-2 text-center">Quantidade</div>
+              <div class="col-span-2 text-right">Valor Unit. (R$)</div>
+              <div class="col-span-1 text-right">Subtotal</div>
+              <div class="col-span-3">Onde Comprar / Mercado</div>
+            </div>
+
+            <!-- Linhas dos Produtos -->
+            <div class="divide-y divide-slate-100">
+              ${items.map(item => renderBaseItemRow(item)).join("")}
+            </div>
+          </div>
+        `;
+      }
+
+      if (totalRendered === 0) {
+        html = `
+          <div class="bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-2">
+            <p class="text-base font-semibold text-slate-700">Nenhum produto encontrado com os filtros atuais.</p>
+            <p class="text-sm text-slate-500">Limpe a busca ou desmarque o filtro "Só com qtd &gt; 0" para visualizar todos os itens.</p>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+    }
+
+    function renderBaseItemRow(item) {
+      const q = parseNum(item.qty);
+      const p = parseNum(item.unitPrice);
+      const sub = q * p;
+      const rowHighlight = q > 0 ? "bg-emerald-50/40" : "bg-white hover:bg-slate-50/70";
+      const aiBadge = item.isPromoAI && item.market
+        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0" title="Preço/Mercado sugerido pelo Scanner IA">IA Promo</span>`
+        : "";
+
+      return `
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 md:gap-3 items-center px-4 sm:px-5 py-3 transition-colors ${rowHighlight}" data-row-id="${item.id}">
+          <!-- Nome do Produto -->
+          <div class="md:col-span-4 flex items-center justify-between md:justify-start gap-2">
+            <span class="text-sm font-semibold text-slate-800">${escapeHtml(item.name)}</span>
+            <span class="md:hidden text-sm font-bold text-emerald-700" data-subtotal-el="${item.id}">${formatBRL(sub)}</span>
+          </div>
+
+          <!-- Campos numéricos (lado a lado no celular) -->
+          <div class="grid grid-cols-2 md:contents gap-2">
+            <!-- Quantidade -->
+            <div class="md:col-span-2">
+              <label class="block md:hidden text-[11px] font-medium text-slate-500 mb-1">Quantidade</label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                placeholder="0"
+                value="${escapeHtml(item.qty)}"
+                data-type="base"
+                data-id="${item.id}"
+                data-field="qty"
+                class="item-input w-full px-3 py-2 rounded-xl border border-slate-300 text-sm text-center font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <!-- Valor Unitário -->
+            <div class="md:col-span-2">
+              <label class="block md:hidden text-[11px] font-medium text-slate-500 mb-1">Valor Unit. (R$)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0,00"
+                value="${escapeHtml(item.unitPrice)}"
+                data-type="base"
+                data-id="${item.id}"
+                data-field="unitPrice"
+                class="item-input w-full px-3 py-2 rounded-xl border border-slate-300 text-sm text-right font-medium bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          <!-- Subtotal (Desktop) -->
+          <div class="hidden md:block md:col-span-1 text-right">
+            <span class="text-sm font-bold ${sub > 0 ? "text-emerald-700" : "text-slate-400"}" data-subtotal-desktop="${item.id}">${formatBRL(sub)}</span>
+          </div>
+
+          <!-- Onde Comprar / Mercado -->
+          <div class="md:col-span-3">
+            <label class="block md:hidden text-[11px] font-medium text-slate-500 mb-1">Onde Comprar / Mercado</label>
+            <div class="flex items-center gap-1.5">
+              <input
+                type="text"
+                placeholder="Ex: Atacadão, Assaí..."
+                value="${escapeHtml(item.market)}"
+                data-type="base"
+                data-id="${item.id}"
+                data-field="market"
+                class="item-input w-full px-3 py-2 rounded-xl border ${item.isPromoAI && item.market ? "border-emerald-400 bg-emerald-50/50" : "border-slate-300 bg-white"} text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+              ${aiBadge}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderExtraList() {
+      const container = document.getElementById("extraListContainer");
+      const categoryOptions = ["Outros / Extra", ...CATEGORY_NAMES];
+
+      container.innerHTML = state.extraItems.map((item, idx) => {
+        const q = parseNum(item.qty);
+        const p = parseNum(item.unitPrice);
+        const sub = q * p;
+        const aiBadge = item.isPromoAI && item.market
+          ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">IA</span>`
+          : "";
+
+        return `
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 md:gap-3 items-center px-4 sm:px-5 py-3 ${q > 0 ? "bg-emerald-50/40" : "bg-white"}">
+            <!-- Nome do Produto Extra -->
+            <div class="md:col-span-3">
+              <label class="block md:hidden text-[11px] font-medium text-slate-500 mb-1">Produto Extra #${idx + 1}</label>
+              <input
+                type="text"
+                placeholder="Digite o nome do produto..."
+                value="${escapeHtml(item.name)}"
+                data-type="extra"
+                data-id="${item.id}"
+                data-field="name"
+                class="item-input w-full px-3 py-2 rounded-xl border border-slate-300 text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+            </div>
+
+            <!-- Categoria -->
+            <div class="md:col-span-2">
+              <label class="block md:hidden text-[11px] font-medium text-slate-500 mb-1">Categoria</label>
+              <select
+                data-type="extra"
+                data-id="${item.id}"
+                data-field="category"
+                class="item-input w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              >
+                ${categoryOptions.map(c => `<option value="${escapeHtml(c)}" ${item.category === c ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
+              </select>
+            </div>
+
+            <div class="grid grid-cols-2 md:contents gap-2">
+              <!-- Quantidade -->
+              <div class="md:col-span-1">
+                <label class="block md:hidden text-[11px] font-medium text-slate-500 mb-1">Qtd</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder="0"
+                  value="${escapeHtml(item.qty)}"
+                  data-type="extra"
+                  data-id="${item.id}"
+                  data-field="qty"
+                  class="item-input w-full px-2.5 py-2 rounded-xl border border-slate-300 text-sm text-center font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+
+              <!-- Valor Unitário -->
+              <div class="md:col-span-2">
+                <label class="block md:hidden text-[11px] font-medium text-slate-500 mb-1">Valor Unit. (R$)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0,00"
+                  value="${escapeHtml(item.unitPrice)}"
+                  data-type="extra"
+                  data-id="${item.id}"
+                  data-field="unitPrice"
+                  class="item-input w-full px-3 py-2 rounded-xl border border-slate-300 text-sm text-right font-medium bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <!-- Subtotal -->
+            <div class="md:col-span-1 flex items-center justify-between md:justify-end">
+              <span class="md:hidden text-xs font-medium text-slate-500">Subtotal:</span>
+              <span class="text-sm font-bold ${sub > 0 ? "text-emerald-700" : "text-slate-400"}" data-subtotal-extra="${item.id}">${formatBRL(sub)}</span>
+            </div>
+
+            <!-- Onde Comprar + Remover linha (se > 5 linhas) -->
+            <div class="md:col-span-3 flex items-center gap-1.5">
+              <input
+                type="text"
+                placeholder="Onde comprar..."
+                value="${escapeHtml(item.market)}"
+                data-type="extra"
+                data-id="${item.id}"
+                data-field="market"
+                class="item-input w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+              ${aiBadge}
+              ${state.extraItems.length > 5 ? `
+                <button
+                  type="button"
+                  data-remove-extra="${item.id}"
+                  title="Remover linha"
+                  class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition shrink-0"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              ` : ""}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Delegação de eventos para inputs da lista base e extras (sem perder foco ao digitar)
+    function handleItemFieldChange(e) {
+      const target = e.target;
+      if (!target.classList.contains("item-input")) return;
+
+      const type = target.dataset.type;
+      const id = target.dataset.id;
+      const field = target.dataset.field;
+      const value = target.value;
+
+      const list = type === "base" ? state.baseItems : state.extraItems;
+      const item = list.find(i => i.id === id);
+      if (!item) return;
+
+      item[field] = value;
+      // Se o usuário editou manualmente o mercado, remove o selo automático caso fique vazio
+      if (field === "market" && value.trim() === "") {
+        item.isPromoAI = false;
+      }
+
+      state.hasUnsavedChanges = true;
+
+      // Atualiza apenas o subtotal da linha e os contadores globais (mantém o foco!)
+      const sub = parseNum(item.qty) * parseNum(item.unitPrice);
+      if (type === "base") {
+        const mobSub = document.querySelector(`[data-subtotal-el="${id}"]`);
+        const deskSub = document.querySelector(`[data-subtotal-desktop="${id}"]`);
+        if (mobSub) mobSub.textContent = formatBRL(sub);
+        if (deskSub) {
+          deskSub.textContent = formatBRL(sub);
+          deskSub.className = `text-sm font-bold ${sub > 0 ? "text-emerald-700" : "text-slate-400"}`;
+        }
+        // Atualiza subtotal da categoria
+        const catItems = state.baseItems.filter(i => i.category === item.category);
+        const catSub = catItems.reduce((acc, i) => acc + parseNum(i.qty) * parseNum(i.unitPrice), 0);
+        const catEl = document.querySelector(`[data-cat-subtotal="${CSS.escape(item.category)}"]`);
+        if (catEl) catEl.textContent = `Subtotal: ${formatBRL(catSub)}`;
+      } else {
+        const exSub = document.querySelector(`[data-subtotal-extra="${id}"]`);
+        if (exSub) {
+          exSub.textContent = formatBRL(sub);
+          exSub.className = `text-sm font-bold ${sub > 0 ? "text-emerald-700" : "text-slate-400"}`;
+        }
+      }
+
+      updateSummaryUI();
+    }
+
+    // =========================================================================
+    // 6. RESUMO "ONDE COMPRAR" AGRUPADO POR SUPERMERCADO
+    // =========================================================================
+    function groupItemsByMarket(onlySelected = false) {
+      const allItems = [
+        ...state.baseItems,
+        ...state.extraItems.filter(e => e.name.trim() !== "")
+      ];
+
+      const map = new Map();
+      for (const item of allItems) {
+        const marketName = (item.market || "").trim();
+        if (!marketName) continue;
+        if (onlySelected && parseNum(item.qty) <= 0) continue;
+
+        const key = normalizeText(marketName);
+        if (!map.has(key)) {
+          map.set(key, {
+            market: marketName,
+            items: [],
+            subtotal: 0
+          });
+        }
+        const entry = map.get(key);
+        const q = parseNum(item.qty);
+        const p = parseNum(item.unitPrice);
+        entry.items.push({
+          name: item.name,
+          category: item.category,
+          qty: q,
+          unitPrice: p,
+          subtotal: q * p,
+          isPromoAI: Boolean(item.isPromoAI)
+        });
+        entry.subtotal += q * p;
+      }
+
+      return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
+    }
+
+    function renderMarketsViews() {
+      const fullContainer = document.getElementById("marketsBreakdownContainer");
+      const previewContainer = document.getElementById("scannerMarketsPreview");
+
+      const groupsFull = groupItemsByMarket(state.filters.marketsOnlySelected);
+      const groupsAll = groupItemsByMarket(false);
+
+      // Preview na aba Scanner IA
+      if (groupsAll.length === 0) {
+        previewContainer.innerHTML = `
+          <div class="col-span-full text-sm text-slate-500 bg-slate-50 rounded-xl p-4 text-center border border-slate-200">
+            Nenhum supermercado indicado ainda. Envie cards promocionais acima ou preencha a coluna "Onde Comprar" na lista.
+          </div>
+        `;
+      } else {
+        previewContainer.innerHTML = groupsAll.map(g => `
+          <div class="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3.5 space-y-1">
+            <div class="flex items-center justify-between gap-2">
+              <h4 class="font-bold text-slate-900 text-sm truncate">${escapeHtml(g.market)}</h4>
+              <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">${g.items.length} ${g.items.length === 1 ? "item" : "itens"}</span>
+            </div>
+            <p class="text-xs text-slate-600">Subtotal estimado: <strong class="text-emerald-700">${formatBRL(g.subtotal)}</strong></p>
+          </div>
+        `).join("");
+      }
+
+      // Visão completa na aba Onde Comprar
+      if (groupsFull.length === 0) {
+        fullContainer.innerHTML = `
+          <div class="col-span-full bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-2">
+            <p class="text-base font-semibold text-slate-700">Nenhum item com supermercado indicado.</p>
+            <p class="text-sm text-slate-500">Use o <strong>Scanner IA de Promoções</strong> ou digite o nome do mercado na coluna "Onde Comprar" da lista.</p>
+          </div>
+        `;
+        return;
+      }
+
+      fullContainer.innerHTML = groupsFull.map(g => `
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div class="bg-emerald-600 text-white px-5 py-3.5 flex items-center justify-between gap-2">
+            <div>
+              <h3 class="text-base font-bold">${escapeHtml(g.market)}</h3>
+              <p class="text-xs text-emerald-100">${g.items.length} ${g.items.length === 1 ? "produto indicado" : "produtos indicados"}</p>
+            </div>
+            <div class="text-right">
+              <span class="block text-[10px] uppercase tracking-wider text-emerald-100">Subtotal</span>
+              <span class="text-base font-extrabold">${formatBRL(g.subtotal)}</span>
+            </div>
+          </div>
+          <div class="divide-y divide-slate-100 p-2 flex-1">
+            ${g.items.map(it => `
+              <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl hover:bg-slate-50">
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-slate-800 truncate flex items-center gap-1.5">
+                    ${escapeHtml(it.name)}
+                    ${it.isPromoAI ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">IA</span>` : ""}
+                  </p>
+                  <p class="text-xs text-slate-500">${escapeHtml(it.category)} ${it.qty > 0 ? `• Qtd: ${it.qty}` : "• Qtd não definida"}</p>
+                </div>
+                <div class="text-right shrink-0">
+                  <p class="text-xs font-semibold text-slate-700">${it.unitPrice > 0 ? `${formatBRL(it.unitPrice)} /un` : "Sem preço"}</p>
+                  ${it.subtotal > 0 ? `<p class="text-xs font-bold text-emerald-700">${formatBRL(it.subtotal)}</p>` : ""}
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // =========================================================================
+    // 7. SCANNER IA DE PROMOÇÕES (GEMINI API COM UPLOAD DE IMAGENS + TEXTO)
+    // =========================================================================
+    // Comprime e converte imagem para JPEG base64 (evita payloads gigantes de fotos de celular)
+    function compressImageToBase64(file, maxWidth = 1280, quality = 0.82) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Falha ao ler arquivo de imagem."));
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onerror = () => reject(new Error("Imagem inválida."));
+          img.onload = () => {
+            let { width, height } = img;
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL("image/jpeg", quality);
+            const base64 = dataUrl.split(",")[1];
+            resolve({ dataUrl, base64, mimeType: "image/jpeg" });
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderPromoImagePreviews() {
+      const container = document.getElementById("promoImagePreviews");
+      if (state.uploadedImages.length === 0) {
+        container.innerHTML = "";
+        return;
+      }
+      container.innerHTML = state.uploadedImages.map(img => `
+        <div class="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-100 aspect-square">
+          <img src="${img.dataUrl}" alt="${escapeHtml(img.name)}" class="w-full h-full object-cover" />
+          <button
+            type="button"
+            data-remove-img="${img.id}"
+            class="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-slate-900/75 hover:bg-rose-600 text-white flex items-center justify-center text-xs font-bold transition"
+            title="Remover imagem"
+          >&times;</button>
+          <div class="absolute bottom-0 inset-x-0 bg-slate-900/65 text-white text-[10px] px-2 py-1 truncate">
+            ${escapeHtml(img.name)}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // Fetch com Exponential Backoff (1s, 2s, 4s) para a Gemini API
+    async function fetchGeminiWithBackoff(url, payload, maxRetries = 4) {
+      let delay = 1000;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+
+          if (response.ok) {
+            return await response.json();
+          }
+
+          if (attempt === maxRetries || (response.status < 500 && response.status !== 429)) {
+            const errText = await response.text();
+            throw new Error(`Erro na API (${response.status}): ${errText}`);
+          }
+        } catch (err) {
+          if (attempt === maxRetries) throw err;
+        }
+        await new Promise(res => setTimeout(res, delay));
+        delay *= 2;
+      }
+    }
+
+    async function analyzePromoCardsWithAI() {
+      const promoText = document.getElementById("promoTextInput").value.trim();
+      const marketHint = document.getElementById("promoMarketHint").value.trim();
+      const onlyCheaper = document.getElementById("onlyReplaceIfCheaper").checked;
+
+      if (state.uploadedImages.length === 0 && !promoText) {
+        showToast("Envie pelo menos uma imagem de card promocional ou cole o texto das ofertas.", "warning");
+        return;
+      }
+
+      const loadingBox = document.getElementById("aiLoadingBox");
+      const resultBox = document.getElementById("aiResultBox");
+      const btn = document.getElementById("analyzePromoBtn");
+
+      loadingBox.classList.remove("hidden");
+      resultBox.classList.add("hidden");
+      btn.disabled = true;
+      btn.classList.add("opacity-60", "cursor-not-allowed");
+
+      try {
+        // Monta catálogo atual (base + extras nomeados) para a IA fazer o cruzamento exato
+        const catalogList = [
+          ...state.baseItems.map(i => ({ id: i.id, name: i.name, category: i.category })),
+          ...state.extraItems
+            .filter(e => e.name.trim() !== "")
+            .map(e => ({ id: e.id, name: e.name.trim(), category: e.category }))
+        ];
+
+        const systemPrompt = `Você é um assistente especialista em compras de supermercado no Brasil.
+Analise os cards promocionais (imagens e/ou textos) enviados pelo usuário.
+1. Identifique o nome do supermercado de cada oferta (se o usuário informou um nome padrão, use-o quando a imagem não mostrar outro).
+2. Extraia os produtos em promoção e seus preços unitários em Reais (número decimal).
+3. Cruze cada oferta encontrada com a lista de compras do usuário fornecida abaixo (usando o campo "id" exato da lista).
+4. Se o mesmo produto da lista aparecer em mais de um card/mercado, retorne todas as ofertas ou priorize claramente a de MENOR preço.
+5. Só faça correspondência (matchedItemId) quando o produto da oferta realmente corresponder ao item da lista (considere sinônimos comuns de mercado, como "Sabão em pó / líquido", "Arroz", "Açúcar", "Papel higiênico", etc., respeitando restrições importantes como "sem lactose" ou "sem glúten" quando houver).`;
+
+        const userPrompt = `Lista de compras do usuário (JSON):
+${JSON.stringify(catalogList)}
+
+Supermercado informado pelo usuário (opcional): ${marketHint || "Não informado — identificar nos cards/texto"}
+${promoText ? `\nTexto de ofertas colado pelo usuário:\n${promoText}` : ""}
+
+Retorne um JSON estruturado com os itens correspondentes encontrados (matches) e um breve resumo em português.`;
+
+        const parts = [{ text: userPrompt }];
+        for (const img of state.uploadedImages) {
+          parts.push({
+            inlineData: {
+              mimeType: img.mimeType,
+              data: img.base64
+            }
+          });
+        }
+
+        const apiKey = ""; // Fornecida automaticamente em runtime pelo ambiente
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+        const payload = {
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                summary: { type: "STRING" },
+                matches: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      matchedItemId: { type: "STRING" },
+                      promoProductName: { type: "STRING" },
+                      price: { type: "NUMBER" },
+                      market: { type: "STRING" },
+                      notes: { type: "STRING" }
+                    },
+                    required: ["matchedItemId", "promoProductName", "price", "market"]
+                  }
+                }
+              },
+              required: ["summary", "matches"]
+            }
+          }
+        };
+
+        const apiRes = await fetchGeminiWithBackoff(apiUrl, payload);
+        const rawText = apiRes?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!rawText) {
+          throw new Error("A IA não retornou dados legíveis. Tente imagens mais nítidas ou informe o texto.");
+        }
+
+        const parsed = JSON.parse(rawText);
+        const matches = Array.isArray(parsed.matches) ? parsed.matches : [];
+
+        // Agrupa pelo menor preço caso a IA retorne múltiplas ofertas para o mesmo item
+        const bestByItemId = new Map();
+        for (const m of matches) {
+          if (!m.matchedItemId || !Number.isFinite(Number(m.price)) || Number(m.price) <= 0) continue;
+          const existing = bestByItemId.get(m.matchedItemId);
+          if (!existing || Number(m.price) < Number(existing.price)) {
+            bestByItemId.set(m.matchedItemId, {
+              ...m,
+              price: Number(m.price),
+              market: (m.market || marketHint || "Promoção IA").trim()
+            });
+          }
+        }
+
+        // Aplica na lista
+        const appliedList = [];
+        const skippedList = [];
+
+        for (const [itemId, offer] of bestByItemId.entries()) {
+          const targetItem =
+            state.baseItems.find(i => i.id === itemId) ||
+            state.extraItems.find(e => e.id === itemId);
+
+          if (!targetItem) continue;
+
+          const currentPrice = parseNum(targetItem.unitPrice);
+          const shouldUpdate = !onlyCheaper || currentPrice === 0 || offer.price < currentPrice;
+
+          if (shouldUpdate) {
+            targetItem.unitPrice = offer.price.toFixed(2);
+            targetItem.market = offer.market;
+            targetItem.isPromoAI = true;
+            appliedList.push({
+              itemName: targetItem.name,
+              promoName: offer.promoProductName,
+              price: offer.price,
+              market: offer.market,
+              previousPrice: currentPrice
+            });
+          } else {
+            skippedList.push({
+              itemName: targetItem.name,
+              offerPrice: offer.price,
+              currentPrice,
+              market: offer.market
+            });
+          }
+        }
+
+        if (appliedList.length > 0) {
+          state.hasUnsavedChanges = true;
+          renderBaseList();
+          renderExtraList();
+          renderMarketsViews();
+          updateSummaryUI();
+          showToast(`${appliedList.length} ${appliedList.length === 1 ? "item atualizado" : "itens atualizados"} com promoções da IA!`, "success");
+        } else {
+          showToast("Análise concluída, mas nenhum preço novo mais barato foi aplicado.", "info");
+        }
+
+        // Exibe resumo detalhado da análise
+        resultBox.innerHTML = `
+          <div class="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 space-y-3">
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-sm font-bold text-emerald-950">Resultado da Análise IA</h3>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-600 text-white">
+                ${appliedList.length} aplicados
+              </span>
+            </div>
+            <p class="text-sm text-slate-700">${escapeHtml(parsed.summary || "Ofertas processadas e comparadas com sua lista.")}</p>
+
+            ${appliedList.length > 0 ? `
+              <div class="bg-white rounded-xl border border-emerald-100 divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                ${appliedList.map(a => `
+                  <div class="px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs sm:text-sm">
+                    <div>
+                      <span class="font-bold text-slate-900">${escapeHtml(a.itemName)}</span>
+                      <span class="text-slate-500 ml-1">(${escapeHtml(a.promoName)})</span>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <span class="font-bold text-emerald-700">${formatBRL(a.price)}</span>
+                      <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold text-xs">${escapeHtml(a.market)}</span>
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            ` : `
+              <p class="text-xs text-slate-600">Nenhum produto da sua lista correspondeu diretamente às ofertas enviadas (ou os preços já preenchidos eram menores).</p>
+            `}
+
+            ${skippedList.length > 0 ? `
+              <p class="text-xs text-amber-700">
+                ${skippedList.length} oferta(s) ignorada(s) porque o preço já preenchido na lista era igual ou menor.
+              </p>
+            ` : ""}
+          </div>
+        `;
+        resultBox.classList.remove("hidden");
+      } catch (err) {
+        console.error("Erro na análise IA:", err);
+        showToast(err.message || "Não foi possível analisar os cards no momento.", "error");
+      } finally {
+        loadingBox.classList.add("hidden");
+        btn.disabled = false;
+        btn.classList.remove("opacity-60", "cursor-not-allowed");
+      }
+    }
+
+    // =========================================================================
+    // 8. GERAÇÃO DE PDF PROFISSIONAL + REGISTRO NO BANCO DE DADOS
+    // =========================================================================
+    function buildExportPayload(onlySelected) {
+      const nowIso = new Date().toISOString();
+      const baseFiltered = state.baseItems
+        .filter(i => !onlySelected || parseNum(i.qty) > 0)
+        .map(i => ({
+          category: i.category,
+          name: i.name,
+          qty: parseNum(i.qty),
+          unitPrice: parseNum(i.unitPrice),
+          subtotal: parseNum(i.qty) * parseNum(i.unitPrice),
+          market: (i.market || "").trim(),
+          isPromoAI: Boolean(i.isPromoAI)
+        }));
+
+      const extraFiltered = state.extraItems
+        .filter(e => e.name.trim() !== "")
+        .filter(e => !onlySelected || parseNum(e.qty) > 0)
+        .map(e => ({
+          category: e.category || "Outros / Extra",
+          name: e.name.trim(),
+          qty: parseNum(e.qty),
+          unitPrice: parseNum(e.unitPrice),
+          subtotal: parseNum(e.qty) * parseNum(e.unitPrice),
+          market: (e.market || "").trim(),
+          isPromoAI: Boolean(e.isPromoAI)
+        }));
+
+      const items = [...baseFiltered, ...extraFiltered];
+      const grandTotal = items.reduce((acc, i) => acc + i.subtotal, 0);
+      const totalUnits = items.reduce((acc, i) => acc + i.qty, 0);
+
+      // Resumo agrupado por supermercado
+      const marketMap = new Map();
+      for (const it of items) {
+        const m = it.market || "Não definido";
+        const key = normalizeText(m);
+        if (!marketMap.has(key)) {
+          marketMap.set(key, { market: m, itemCount: 0, subtotal: 0 });
+        }
+        const entry = marketMap.get(key);
+        entry.itemCount += 1;
+        entry.subtotal += it.subtotal;
+      }
+
+      const marketsSummary = Array.from(marketMap.values()).sort((a, b) => b.subtotal - a.subtotal);
+
+      return {
+        exportedAt: nowIso,
+        onlySelected,
+        itemCount: items.length,
+        totalUnits,
+        grandTotal,
+        items,
+        marketsSummary
+      };
+    }
+
+    function generatePdfDocument(record) {
+      const { jsPDF } = window.jspdf;
+      const docPdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+      // Cabeçalho estilizado
+      docPdf.setFillColor(5, 150, 105); // Emerald 600
+      docPdf.rect(0, 0, 210, 28, "F");
+
+      docPdf.setTextColor(255, 255, 255);
+      docPdf.setFont("helvetica", "bold");
+      docPdf.setFontSize(16);
+      docPdf.text("Sistema de Pedidos & Feira Inteligente", 14, 13);
+
+      docPdf.setFont("helvetica", "normal");
+      docPdf.setFontSize(10);
+      docPdf.text(`Gerado em: ${formatDateTime(record.exportedAt)}`, 14, 21);
+      docPdf.text(`Itens: ${record.itemCount} | Total Estimado: ${formatBRL(record.grandTotal)}`, 196, 21, { align: "right" });
+
+      // Tabela principal organizada por categoria
+      const tableBody = record.items.map(it => [
+        it.category,
+        it.name,
+        it.qty > 0 ? String(it.qty) : "-",
+        it.unitPrice > 0 ? formatBRL(it.unitPrice) : "-",
+        it.subtotal > 0 ? formatBRL(it.subtotal) : "-",
+        it.market ? (it.isPromoAI ? `${it.market} (IA)` : it.market) : "-"
+      ]);
+
+      docPdf.autoTable({
+        startY: 34,
+        head: [["Categoria", "Produto", "Qtd", "Valor Unit.", "Subtotal", "Onde Comprar"]],
+        body: tableBody,
+        theme: "striped",
+        headStyles: {
+          fillColor: [15, 23, 42],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 8.5
+        },
+        styles: {
+          fontSize: 8,
+          cellPadding: 2.5,
+          overflow: "linebreak"
+        },
+        columnStyles: {
+          0: { cellWidth: 34 },
+          1: { cellWidth: 52 },
+          2: { cellWidth: 14, halign: "center" },
+          3: { cellWidth: 24, halign: "right" },
+          4: { cellWidth: 24, halign: "right", fontStyle: "bold" },
+          5: { cellWidth: 34 }
+        },
+        foot: [[
+          "",
+          "TOTAL GERAL",
+          String(Number(record.totalUnits.toFixed(2))),
+          "",
+          formatBRL(record.grandTotal),
+          ""
+        ]],
+        footStyles: {
+          fillColor: [236, 253, 245],
+          textColor: [6, 95, 70],
+          fontStyle: "bold",
+          fontSize: 9
+        }
+      });
+
+      // Resumo final agrupado por Supermercado
+      const finalY = docPdf.lastAutoTable.finalY + 10;
+      docPdf.setTextColor(15, 23, 42);
+      docPdf.setFont("helvetica", "bold");
+      docPdf.setFontSize(12);
+      docPdf.text("Resumo por Supermercado (Onde Comprar)", 14, finalY);
+
+      docPdf.autoTable({
+        startY: finalY + 4,
+        head: [["Supermercado / Local", "Qtd. de Itens", "Subtotal Estimado"]],
+        body: record.marketsSummary.map(m => [
+          m.market,
+          String(m.itemCount),
+          formatBRL(m.subtotal)
+        ]),
+        theme: "grid",
+        headStyles: {
+          fillColor: [5, 150, 105],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 9
+        },
+        styles: { fontSize: 8.5, cellPadding: 2.5 },
+        columnStyles: {
+          1: { halign: "center" },
+          2: { halign: "right", fontStyle: "bold" }
+        }
+      });
+
+      const dateSlug = new Date(record.exportedAt).toISOString().slice(0, 16).replace(/[:T]/g, "-");
+      docPdf.save(`feira-inteligente-${dateSlug}.pdf`);
+    }
+
+    async function handleExportPdf() {
+      const onlySelected = document.getElementById("pdfOnlySelectedCheckbox").checked;
+      const record = buildExportPayload(onlySelected);
+
+      if (record.items.length === 0) {
+        showToast("Não há itens com quantidade > 0 para exportar. Preencha quantidades ou desmarque 'PDF só qtd > 0'.", "warning");
+        return;
+      }
+
+      // Garante que o estado atual também esteja salvo (sem limpar NADA!)
+      await saveCurrentState(true);
+
+      // Gera e baixa o PDF
+      generatePdfDocument(record);
+
+      // Salva registro permanente no Banco de Dados de Histórico
+      await saveExportRecord(record);
+
+      showToast("PDF exportado e salvo no Banco de Dados! Seus dados atuais foram mantidos.", "success");
+    }
+
+    // =========================================================================
+    // 9. ABA BANCO DE DADOS / HISTÓRICO DE EXPORTAÇÕES
+    // =========================================================================
+    function renderHistoryView() {
+      const container = document.getElementById("historyListContainer");
+      if (state.exportHistory.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-2">
+            <p class="text-base font-semibold text-slate-700">Nenhuma exportação registrada ainda.</p>
+            <p class="text-sm text-slate-500">Sempre que você clicar em <strong>Exportar PDF</strong>, um registro completo da feira será salvo aqui.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = state.exportHistory.map((rec, idx) => `
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Feira #${state.exportHistory.length - idx}</span>
+                <span class="text-sm font-bold text-slate-900">${escapeHtml(formatDateTime(rec.exportedAt))}</span>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-600 mt-1">
+                <strong>${rec.itemCount || 0}</strong> itens registrados • Total: <strong class="text-emerald-700">${formatBRL(rec.grandTotal)}</strong>
+              </p>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                data-toggle-history="${rec.id}"
+                class="px-3.5 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-semibold transition"
+              >
+                Ver Detalhes
+              </button>
+              <button
+                type="button"
+                data-reexport-pdf="${rec.id}"
+                class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-semibold shadow-sm transition"
+              >
+                Re-exportar PDF
+              </button>
+            </div>
+          </div>
+
+          <!-- Detalhes expansíveis -->
+          <div id="history-details-${rec.id}" class="hidden border-t border-slate-100 bg-slate-50/70 p-4 space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              ${(rec.marketsSummary || []).map(m => `
+                <div class="bg-white rounded-xl border border-slate-200 px-3 py-2 flex items-center justify-between text-xs">
+                  <span class="font-semibold text-slate-800">${escapeHtml(m.market)} (${m.itemCount})</span>
+                  <span class="font-bold text-emerald-700">${formatBRL(m.subtotal)}</span>
+                </div>
+              `).join("")}
+            </div>
+
+            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <div class="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                ${(rec.items || []).map(it => `
+                  <div class="px-3.5 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div>
+                      <span class="font-semibold text-slate-800">${escapeHtml(it.name)}</span>
+                      <span class="text-slate-400 ml-1">(${escapeHtml(it.category)})</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-slate-600">
+                      <span>Qtd: <strong>${it.qty}</strong></span>
+                      <span>Unit: ${formatBRL(it.unitPrice)}</span>
+                      <span class="font-bold text-emerald-700">${formatBRL(it.subtotal)}</span>
+                      ${it.market ? `<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-medium">${escapeHtml(it.market)}</span>` : ""}
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function downloadJsonBackup() {
+      const backup = {
+        exportedBackupAt: new Date().toISOString(),
+        currentState: {
+          lastSavedAt: state.lastSavedAt,
+          baseItems: state.baseItems,
+          extraItems: state.extraItems
+        },
+        exportHistory: state.exportHistory
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `backup-feira-inteligente-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Backup JSON baixado com sucesso!", "success");
+    }
+
+    // =========================================================================
+    // 10. FLUXO DE LIMPEZA COM DUPLA VERIFICAÇÃO OBRIGATÓRIA
+    // =========================================================================
+    function openClearModalStep1() {
+      document.getElementById("clearModalOverlay").classList.remove("hidden");
+      document.getElementById("clearModalStep1").classList.remove("hidden");
+      document.getElementById("clearModalStep2").classList.add("hidden");
+    }
+
+    function goToClearModalStep2() {
+      document.getElementById("clearModalStep1").classList.add("hidden");
+      document.getElementById("clearModalStep2").classList.remove("hidden");
+    }
+
+    function closeClearModal() {
+      document.getElementById("clearModalOverlay").classList.add("hidden");
+      document.getElementById("clearModalStep1").classList.add("hidden");
+      document.getElementById("clearModalStep2").classList.add("hidden");
+    }
+
+    async function executeClearCurrentData() {
+      state.baseItems = createInitialBaseItems();
+      state.extraItems = createInitialExtraItems(5);
+      state.hasUnsavedChanges = false;
+
+      closeClearModal();
+      renderBaseList();
+      renderExtraList();
+      renderMarketsViews();
+      await saveCurrentState(true);
+      showToast("Todos os valores e quantidades atuais foram limpos. Seu histórico de exportações foi preservado!", "info");
+    }
+
+    // =========================================================================
+    // 11. NAVEGAÇÃO ENTRE ABAS E REGISTRO DE EVENTOS
+    // =========================================================================
+    window.switchTab = function(tabName) {
+      state.activeTab = tabName;
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.add("hidden"));
+      const activePanel = document.getElementById(`tab-${tabName}`);
+      if (activePanel) activePanel.classList.remove("hidden");
+
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+          btn.className = "tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all bg-emerald-600 text-white shadow-sm";
+        } else {
+          btn.className = "tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all text-slate-600 hover:bg-slate-100";
+        }
+      });
+
+      if (tabName === "mercados" || tabName === "scanner") {
+        renderMarketsViews();
+      }
+      if (tabName === "historico") {
+        renderHistoryView();
+      }
+    };
+
+    function bindEvents() {
+      // Abas
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => window.switchTab(btn.dataset.tab));
+      });
+
+      // Filtros da lista
+      document.getElementById("searchInput").addEventListener("input", (e) => {
+        state.filters.search = e.target.value;
+        renderBaseList();
+      });
+      document.getElementById("categoryFilter").addEventListener("change", (e) => {
+        state.filters.category = e.target.value;
+        renderBaseList();
+      });
+      document.getElementById("onlyWithQtyFilter").addEventListener("change", (e) => {
+        state.filters.onlyWithQty = e.target.checked;
+        renderBaseList();
+      });
+      document.getElementById("marketsOnlySelectedFilter").addEventListener("change", (e) => {
+        state.filters.marketsOnlySelected = e.target.checked;
+        renderMarketsViews();
+      });
+
+      // Inputs da Lista Base e Extras
+      document.getElementById("baseListContainer").addEventListener("input", handleItemFieldChange);
+      document.getElementById("extraListContainer").addEventListener("input", handleItemFieldChange);
+      document.getElementById("extraListContainer").addEventListener("change", handleItemFieldChange);
+
+      // Remover linha extra (> 5)
+      document.getElementById("extraListContainer").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-remove-extra]");
+        if (!btn) return;
+        const id = btn.dataset.removeExtra;
+        state.extraItems = state.extraItems.filter(item => item.id !== id);
+        state.hasUnsavedChanges = true;
+        renderExtraList();
+        updateSummaryUI();
+      });
+
+      // Adicionar nova linha em aberto
+      document.getElementById("addExtraRowBtn").addEventListener("click", () => {
+        state.extraItems.push(createEmptyExtraRow());
+        renderExtraList();
+        showToast("Nova linha em aberto adicionada!", "info");
+      });
+
+      // Upload de imagens no Scanner IA
+      document.getElementById("promoImagesInput").addEventListener("change", async (e) => {
+        const files = Array.from(e.target.files || []);
+        for (const file of files) {
+          try {
+            const compressed = await compressImageToBase64(file);
+            state.uploadedImages.push({
+              id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              name: file.name,
+              ...compressed
+            });
+          } catch (err) {
+            showToast(`Erro ao carregar ${file.name}`, "error");
+          }
+        }
+        e.target.value = "";
+        renderPromoImagePreviews();
+      });
+
+      // Remover imagem do Scanner IA
+      document.getElementById("promoImagePreviews").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-remove-img]");
+        if (!btn) return;
+        state.uploadedImages = state.uploadedImages.filter(i => i.id !== btn.dataset.removeImg);
+        renderPromoImagePreviews();
+      });
+
+      // Limpar Scanner IA
+      document.getElementById("clearScannerBtn").addEventListener("click", () => {
+        state.uploadedImages = [];
+        document.getElementById("promoTextInput").value = "";
+        document.getElementById("promoMarketHint").value = "";
+        document.getElementById("aiResultBox").classList.add("hidden");
+        renderPromoImagePreviews();
+      });
+
+      // Botão Analisar Cards com IA
+      document.getElementById("analyzePromoBtn").addEventListener("click", analyzePromoCardsWithAI);
+
+      // Histórico: Expandir detalhes e Re-exportar PDF
+      document.getElementById("historyListContainer").addEventListener("click", (e) => {
+        const toggleBtn = e.target.closest("[data-toggle-history]");
+        if (toggleBtn) {
+          const el = document.getElementById(`history-details-${toggleBtn.dataset.toggleHistory}`);
+          if (el) el.classList.toggle("hidden");
+          return;
+        }
+        const reexportBtn = e.target.closest("[data-reexport-pdf]");
+        if (reexportBtn) {
+          const rec = state.exportHistory.find(r => r.id === reexportBtn.dataset.reexportPdf);
+          if (rec) {
+            generatePdfDocument(rec);
+            showToast("PDF re-exportado com sucesso!", "success");
+          }
+        }
+      });
+
+      // Backup JSON
+      document.getElementById("downloadJsonBackupBtn").addEventListener("click", downloadJsonBackup);
+
+      // Barra Inferior: Salvar, Exportar e Limpar
+      document.getElementById("saveBtn").addEventListener("click", () => saveCurrentState(false));
+      document.getElementById("exportBtn").addEventListener("click", handleExportPdf);
+      document.getElementById("clearBtn").addEventListener("click", openClearModalStep1);
+
+      // Modal de Dupla Verificação
+      document.getElementById("clearStep1CancelBtn").addEventListener("click", closeClearModal);
+      document.getElementById("clearStep1ConfirmBtn").addEventListener("click", goToClearModalStep2);
+      document.getElementById("clearStep2BackBtn").addEventListener("click", openClearModalStep1);
+      document.getElementById("clearStep2ConfirmBtn").addEventListener("click", executeClearCurrentData);
+    }
+
+    // =========================================================================
+    // 12. INICIALIZAÇÃO
+    // =========================================================================
+    function bootstrap() {
+      state.baseItems = createInitialBaseItems();
+      state.extraItems = createInitialExtraItems(5);
+      populateCategoryFilter();
+      renderBaseList();
+      renderExtraList();
+      renderMarketsViews();
+      renderHistoryView();
+      updateSummaryUI();
+      bindEvents();
+      initFirebaseAndLoad();
+    }
+
+    bootstrap();
+  </script>
+</body>
+</html>
